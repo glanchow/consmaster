@@ -289,17 +289,18 @@ class GCons(Cons, GLispObject, object):
 
     def setCar(self, obj):
         if self.gcar == None:
-            return super(GCons, self).setCar(obj)
-        print "obj", obj
-        return self.gcar.setTarget(obj)
+            super(GCons, self).setCar(obj)
+            return
+        self.gcar.setTarget(obj)
     def getCar(self):
         if self.gcar == None:
             return super(GCons, self).getCar()
         return self.gcar.getTarget()
     def setCdr(self, obj):
         if self.gcdr == None:
-            return super(GCons, self).setCdr(obj)
-        return self.gcdr.setTarget(obj)
+            super(GCons, self).setCdr(obj)
+            return
+        self.gcdr.setTarget(obj)
     def getCdr(self):
         if self.gcdr == None:
             return super(GCons, self).getCdr()
@@ -309,27 +310,15 @@ class GCons(Cons, GLispObject, object):
 class GLisp(Lisp, QGraphicsScene, object):
     # Modes are used to determine left-click action
     SelectOrMove, AddSymbol, AddCons, SetPointer = range(4)
-    mode = None
-    rightClickPos = None
-#todo, revoir le nom des sous-classes des GObjets
-
-    # SIGNALER les étapes des modes
-    objectInserted = Signal(GLispObject)
-    # mettre added plutot que insterted
-    #faire pareil lorsque l'insert est cancel
-    # faire un mode pour la 2ème étape du pointage
-    # textInserted = Signal(QGraphicsTextItem)
-    # itemSelected = Signal(QGraphicsItem)
-
-    # A temporary Arrow used to create a Pointer
-    arrow = None
-    startItem = None
-    #
-#    validPointerStart = [GSymbol, GCar, GCdr]
-#    validPointerEnd = [GSymbol, GCons]
 
     def __init__(self, parent=None, *args, **kwargs):
-        print parent
+        self.mode = None
+        self.rightClickPos = None
+        self.mousePos = None
+        # A temporary Arrow used to create a Pointer
+        self.arrow = None
+        self.startItem = None
+
         self.xx = 0
 
         self.defaultMenu = QMenu("&GLisp")
@@ -346,9 +335,6 @@ class GLisp(Lisp, QGraphicsScene, object):
         self.createToolBar()
 
         self.parent = parent
-# je crois que nil et t doivent être des variables globales
-
-#        self.objectInserted.connect(self.objectInserted)
 
         self.mode = self.SelectOrMove
         self.arrow = None
@@ -437,7 +423,7 @@ class GLisp(Lisp, QGraphicsScene, object):
         self.selectCarAction = QAction(
             QIcon('icons/pointer.png'), u"Sélectionner C&ar …",
             self, shortcut="Ctrl+A", statusTip=u"Sélectionner le Car",
-            triggered=self.todo)
+            triggered=self.selectCar)
 
         self.nilCarAction = QAction(
             QIcon('icons/symbol.png'), u"Car = &nil",
@@ -447,22 +433,22 @@ class GLisp(Lisp, QGraphicsScene, object):
         self.tCarAction = QAction(
             QIcon('icons/symbol.png'), u"Car = &t",
             self, shortcut="Ctrl+T", statusTip=u"Mettre t en Car",
-            triggered=self.todo)
+            triggered=self.tCar)
 
         self.selectCdrAction = QAction(
             QIcon('icons/pointer.png'), u"Sélectionner C&dr …",
             self, shortcut="Ctrl+D", statusTip=u"Sélectionner le Cdr",
-            triggered=self.todo)
+            triggered=self.selectCdr)
 
         self.nilCdrAction = QAction(
             QIcon('icons/symbol.png'), u"Cdr = &nil",
             self, shortcut="Ctrl+Alt+N", statusTip=u"Mettre nil en Cdr",
-            triggered=self.todo)
+            triggered=self.nilCdr)
 
         self.tCdrAction = QAction(
             QIcon('icons/symbol.png'), u"Cdr = &t",
             self, shortcut="Ctrl+Alt+T", statusTip=u"Mettre t en Cdr",
-            triggered=self.todo)
+            triggered=self.tCdr)
 
     def createMenus(self):
         """Create the menus."""
@@ -596,6 +582,8 @@ class GLisp(Lisp, QGraphicsScene, object):
             # We've done with the temporary arrow
             self.removeItem(self.arrow)
             self.arrow = None
+            # Return to current mode
+            self.mode = self.mouseActionTypeGroup.checkedId()
 
         # End of item move
         elif self.mode == self.SelectOrMove:
@@ -712,21 +700,45 @@ class GLisp(Lisp, QGraphicsScene, object):
             return
         symbol.setCval(None)
 
+    def selectCar(self):
+        cons = self.selectClass(GCons)
+        if not cons:
+            return
+        self.mode = self.SetPointer
+        self.startItem = cons.gcar
+        self.manualAddPointer()
+
     def nilCar(self):
         cons = self.selectClass(GCons)
-        if cons == None:
+        if not cons:
             return
         cons.setCar(self.nil)
 
-    # def reg(self, lisp):
-    #     """Read, eval, print graphics."""
-    #     r = self.readLisp(lisp)
-    #     e = self.evalLisp(r)
-    #     p = self.printGraphics(e)
-    #     return p
+    def tCar(self):
+        cons = self.selectClass(GCons)
+        if not cons:
+            return
+        cons.setCar(self.t)
 
-    # def printGraphics(self, obj):
-    #     return self.printObject(obj)
+    def selectCdr(self):
+        cons = self.selectClass(GCons)
+        if not cons:
+            return
+        self.mode = self.SetPointer
+        self.startItem = cons.gcdr
+        self.manualAddPointer()
+
+    def nilCdr(self):
+        cons = self.selectClass(GCons)
+        if not cons:
+            return
+        cons.setCdr(self.nil)
+
+    def tCdr(self):
+        cons = self.selectClass(GCons)
+        if not cons:
+            return
+        cons.setCdr(self.t)
 
     def todo(self):
         QMessageBox.about(self.parent, "Todo",
