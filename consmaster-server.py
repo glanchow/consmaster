@@ -11,7 +11,7 @@ SIZEOF_UINT16 = 2
 
 import sys
 import signal
-import EntityManager
+from EntityManager import *
 import UserManager
 
 try:
@@ -26,14 +26,13 @@ except:
 class Thread(QThread):
 
     error = Signal(QTcpSocket.SocketError)
-    lock = QReadWriteLock()
 
     def __init__(self, socketDescriptor, parent):
         super(Thread, self).__init__(parent)
         self.socketDescriptor = socketDescriptor
-        self.reply = None
         self.commands = {}
         self.commands["register"] = self.register
+        self.commands["login"] = self.login
 
     def run(self):
         self.socket = QTcpSocket()
@@ -54,43 +53,39 @@ class Thread(QThread):
                     self.socket.waitForReadyRead(-1)
                     if self.socket.bytesAvailable() >= nextBlockSize:
                         break
-
             command = inStream.readQString()
-            print "Received command", command
             self.commands[command](inStream)
 
-    def sendError(self, msg):
-        self.newReply()
-        self.outStream.writeQString("ERROR")
-        self.outStream.writeQString(msg)
-        self.sendReply()
-
     def newReply(self):
-        while self.reply != None:
-            pass
-        self.reply = QByteArray()
-        self.outStream = QDataStream(self.reply, QIODevice.WriteOnly)
-        self.outStream.setVersion(QDataStream.Qt_4_2)
-        self.outStream.writeUInt16(0)
+        reply = QByteArray()
+        outStream = QDataStream(reply, QIODevice.WriteOnly)
+        outStream.setVersion(QDataStream.Qt_4_2)
+        outStream.writeUInt16(0)
+        return reply, outStream
 
-    def sendReply(self):
-        self.outStream.device().seek(0)
-        self.outStream.writeUInt16(self.reply.size() - SIZEOF_UINT16)
-        self.socket.write(self.reply)
-        self.reply = None
+    def sendReply(self, reply, outStream):
+        outStream.device().seek(0)
+        outStream.device().seek(0)
+        outStream.writeUInt16(reply.size() - SIZEOF_UINT16)
+        self.socket.write(reply)
 
     def register(self, inStream):
         username = inStream.readQString()
         password = inStream.readQString()
         email = inStream.readQString()
-        print "Register", username, password, email
         registered = UserManager.register(username, password, email)
-        self.newReply()
-        self.outStream.writeInt16(registered)
-        self.sendReply()
-        #UserManager.authenticate(username, password)
-        #UserManager.register("test", password, "emailtest")
-        #UserManager.resetPassword(email)
+        reply, outStream = self.newReply()
+        outStream.writeInt16(registered)
+        self.sendReply(reply, outStream)
+
+    def login(self, inStream):
+        username = inStream.readQString()
+        password = inStream.readQString()
+        email = inStream.readQString()
+        login = UserManager.authenticate(username, password)
+        reply, outStream = self.newReply()
+        outStream.writeInt16(login)
+        self.sendReply(reply, outStream)
 
 
 class Server(QTcpServer):
@@ -102,7 +97,6 @@ class Server(QTcpServer):
             sys.exit(1)
 
     def incomingConnection(self, socketDescriptor):
-        print "Incoming connection"
         thread = Thread(socketDescriptor, self)
         thread.finished.connect(thread.deleteLater)
         thread.start()

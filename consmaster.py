@@ -30,17 +30,6 @@ class Client(QMainWindow):
     def __init__(self, parent=None):
         super(Client, self).__init__(parent)
 
-        self.socket = QTcpSocket()
-
-        self.socket.connected.connect(self.connected)
-        self.socket.disconnected.connect(self.disconnected)
-        self.socket.error.connect(self.socketError)
-        self.socket.readyRead.connect(self.readReply)
-
-        self.request = None
-        self.onReplies = {}
-        self.onReplies["registered"] = self.registered
-
         self.createActions()
         self.createMenus()
         self.createToolBar()
@@ -56,110 +45,21 @@ class Client(QMainWindow):
         self.setWindowTitle("ConsMaster")
         self.show()
 
+        self.socket = QTcpSocket()
+        self.nextBlockSize = 0
+
+        self.socket.connected.connect(self.connected)
+        self.socket.disconnected.connect(self.disconnected)
+        self.socket.error.connect(self.socketError)
+        self.socket.readyRead.connect(self.readReply)
+
+        self.replies = {}
+        self.replies[REGISTER_SUCCESS] = self.registered
+        self.replies[REGISTER_USERNAME_EXISTS] = self.alreadyRegistered
+        self.replies[AUTHENTICATE_SUCCESS] = self.logged
+        self.replies[AUTHENTICATE_FAILURE] = self.badCreditentials
+
         #self.connect()
-
-
-    #
-    # SERVER COMMUNICATION AND EVENTS
-    #
-
-    def connect(self):
-        if self.socket.isOpen():
-            self.socket.close()
-
-        self.host = self.hostLineEdit.text()
-        self.port = int(self.portLineEdit.text())
-        self.statusBar().showMessage(u"Connecting to server…")
-        self.socket.connectToHost(self.host, self.port)
-
-    def disconnect(self):
-        self.socket.close()
-
-    def connected(self):
-        self.hideConnectDialog()
-        self.statusBar().showMessage(u"Connecté")
-        self.connectAction.setEnabled(False)
-        self.disconnectAction.setEnabled(True)
-        self.loginAction.setEnabled(True)
-        self.registerAction.setEnabled(True)
-
-    def disconnected(self):
-        self.statusBar().showMessage(u"Déconnecté")
-        self.connectAction.setEnabled(True)
-        self.disconnectAction.setEnabled(False)
-        self.anonymousAction.setEnabled(False)
-        self.loginAction.setEnabled(False)
-        self.registerAction.setEnabled(False)
-
-    def socketError(self, socketError):
-        q = QMessageBox(self)
-        q.setWindowTitle(u"Erreur réseau")
-        q.setIconPixmap(QPixmap("icons/network-error.png"))
-        q.show()
-
-        if socketError == QAbstractSocket.RemoteHostClosedError:
-            q.setText(u"Le serveur a terminé la connexion.")
-        elif socketError == QAbstractSocket.HostNotFoundError:
-            q.setText(u"Hôte introuvable. Vérifier les paramètres de connexion.")
-        elif socketError == QAbstractSocket.ConnectionRefusedError:
-            q.setText(u"Connexion refusée. Vérifier que le serveur existe.")
-        else:
-            q.setText(u"Erreur: %s." % self.socket.errorString())
-
-    def newRequest(self):
-        while self.request != None:
-            pass
-        self.request = QByteArray()
-        self.outStream = QDataStream(self.request, QIODevice.WriteOnly)
-        self.outStream.setVersion(QDataStream.Qt_4_2)
-        self.outStream.writeUInt16(0)
-
-    def sendRequest(self):
-        self.outStream.device().seek(0)
-        self.outStream.writeUInt16(self.request.size() - SIZEOF_UINT16)
-        self.socket.write(self.request)
-        self.request = None
-
-    def readReply(self):
-        nextBlockSize = 0
-        inStream = QDataStream(self.socket)
-        inStream.setVersion(QDataStream.Qt_4_2)
-        while True:
-            self.socket.waitForReadyRead(-1)
-            if self.socket.bytesAvailable() >= SIZEOF_UINT16:
-                nextBlockSize = inStream.readUInt16()
-                break
-        if self.socket.bytesAvailable() < nextBlockSize:
-            while True:
-                self.socket.waitForReadyRead(-1)
-                if self.socket.bytesAvailable() >= nextBlockSize:
-                    break
-
-        onReply = inStream.readQString()
-        print "Received reply", onReply
-        self.onReplies[onReply](inStream)
-
-    #
-    # SERVER COMMANDS
-    #
-
-    def register(self):
-        self.newRequest()
-        self.outStream.writeQString("register")
-        self.outStream.writeQString(self.username2LineEdit.text())
-        self.outStream.writeQString(self.password2LineEdit.text())
-        self.outStream.writeQString(self.email2LineEdit.text())
-        self.sendRequest()
-
-    def registered(self, inStream):
-        status = inStream.readInt16()
-        if status == REGISTER_SUCCESS:
-            self.statusBar().showMessage(u"Inscription réussie")
-        elif status == REGISTER_ERROR_USERNAME_EXISTS:
-            self.statusBar().showMessage(u"Inscription interrompue, nom d'utilisateur existant")
-
-    def login():
-        pass
 
     def createActions(self):
         self.connectAction = QAction(QIcon("icons/network-idle"),
@@ -353,7 +253,7 @@ class Client(QMainWindow):
     def createLoginDialog(self):
         self.loginDialog = QDialog()
         self.loginDialog.setModal(True)
-        self.loginDialog.setWindowTitle(u"Inscription")
+        self.loginDialog.setWindowTitle(u"Authentification")
 
         self.usernameLineEdit = QLineEdit()
         self.usernameLineEdit.setFocus()
@@ -398,6 +298,130 @@ class Client(QMainWindow):
     def about(self):
         QMessageBox.about(self, "A propos ConsMaster",
                 u"Maîtrisez les représentations de listes, en notations parenthésées, à point et en doublets graphiques.")
+
+    #
+    # NETWORK MANAGMENT
+    #
+
+    def connect(self):
+        if self.socket.isOpen():
+            self.socket.close()
+
+        self.host = self.hostLineEdit.text()
+        self.port = int(self.portLineEdit.text())
+        self.statusBar().showMessage(u"Connexion…")
+        self.socket.connectToHost(self.host, self.port)
+
+    def disconnect(self):
+        self.socket.close()
+
+    def connected(self):
+        self.hideConnectDialog()
+        self.statusBar().showMessage(u"Connecté.")
+        self.connectAction.setEnabled(False)
+        self.disconnectAction.setEnabled(True)
+        self.loginAction.setEnabled(True)
+        self.registerAction.setEnabled(True)
+
+    def disconnected(self):
+        self.statusBar().showMessage(u"Déconnecté.")
+        self.connectAction.setEnabled(True)
+        self.disconnectAction.setEnabled(False)
+        self.anonymousAction.setEnabled(False)
+        self.loginAction.setEnabled(False)
+        self.registerAction.setEnabled(False)
+
+    def socketError(self, socketError):
+        q = QMessageBox(self)
+        q.setWindowTitle(u"Erreur réseau")
+        q.setIconPixmap(QPixmap("icons/network-error.png"))
+        q.show()
+
+        if socketError == QAbstractSocket.RemoteHostClosedError:
+            q.setText(u"Le serveur a terminé la connexion.")
+        elif socketError == QAbstractSocket.HostNotFoundError:
+            q.setText(u"Hôte introuvable. Vérifier les paramètres de connexion.")
+        elif socketError == QAbstractSocket.ConnectionRefusedError:
+            q.setText(u"Connexion refusée. Vérifier que le serveur existe.")
+        else:
+            q.setText(u"Erreur: %s." % self.socket.errorString())
+
+    def newRequest(self):
+        request = QByteArray()
+        outStream = QDataStream(request, QIODevice.WriteOnly)
+        outStream.setVersion(QDataStream.Qt_4_2)
+        outStream.writeUInt16(0)
+        return request, outStream
+
+    def sendRequest(self, request, outStream):
+        outStream.device().seek(0)
+        outStream.writeUInt16(request.size() - SIZEOF_UINT16)
+        self.socket.write(request)
+
+    def readReply(self):
+        inStream = QDataStream(self.socket)
+        inStream.setVersion(QDataStream.Qt_4_2)
+        if self.nextBlockSize == 0:
+            if self.socket.bytesAvailable() < SIZEOF_UINT16:
+                return
+            self.nextBlockSize = inStream.readUInt16()
+        if self.socket.bytesAvailable() < self.nextBlockSize:
+            return
+        replyCode = inStream.readInt16()
+        self.replies[replyCode](inStream)
+        self.nextBlockSize = 0
+
+    #
+    # SERVER COMMANDS AND REPLIES
+    #
+
+    def successMessage(self, message, title=None):
+        if title == None:
+            title = u"Succès"
+        q = QMessageBox(self)
+        q.setWindowTitle(title)
+        q.setIconPixmap(QPixmap("icons/button_accept"))
+        q.setText(message)
+        q.show()
+
+    def errorMessage(self, message, title=None):
+        if title == None:
+            title = u"Erreur"
+        q = QMessageBox(self)
+        q.setWindowTitle(title)
+        q.setIconPixmap(QPixmap("icons/user-busy.png"))
+        q.setText(message)
+        q.show()
+
+    def register(self):
+        request, outStream = self.newRequest()
+        outStream.writeQString("register")
+        outStream.writeQString(self.username2LineEdit.text())
+        outStream.writeQString(self.password2LineEdit.text())
+        outStream.writeQString(self.email2LineEdit.text())
+        self.sendRequest(request, outStream)
+
+    def registered(self, inStream):
+        self.registerDialog.hide()
+        self.successMessage(u"Inscription réussie.")
+
+    def alreadyRegistered(self, inStream):
+        self.errorMessage(u"Le nom d'utilisateur existe déjà sur ce serveur.")
+
+    def login(self):
+        request, outStream = self.newRequest()
+        outStream.writeQString("login")
+        outStream.writeQString(self.usernameLineEdit.text())
+        outStream.writeQString(self.passwordLineEdit.text())
+        self.sendRequest(request, outStream)
+
+    def logged(self, inStream):
+        self.loginDialog.hide()
+        self.statusBar().showMessage(u"Authentifié.")
+        self.loginAction.setEnabled(False)
+
+    def badCreditentials(self, inStream):
+        self.errorMessage(u"Le nom d'utilisateur et le mot de passe ne correspondent pas.")
 
 
 if __name__ == '__main__':

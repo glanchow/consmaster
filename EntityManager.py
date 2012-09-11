@@ -14,6 +14,7 @@ from datetime import timedelta
 try:
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.orm import scoped_session
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy import Column, Integer, String, Interval
     from sqlalchemy import ForeignKey
@@ -23,9 +24,7 @@ except:
     sys.exit(1)
 
 
-
 Base = declarative_base()
-
 
 
 class User(Base):
@@ -46,7 +45,6 @@ class User(Base):
         return "<User('%s')>" % (self.username)
 
 
-
 class UserRepository():
 
     def findAll(self):
@@ -58,8 +56,7 @@ class UserRepository():
     def findByUsernameAndPassword(self, username, password):
         return em.query(User). \
                filter(User.username == username). \
-               filter(User.password == password)
-
+               filter(User.password == password).all()
 
 
 class Exercice(Base):
@@ -77,12 +74,10 @@ class Exercice(Base):
         return "<Exercice('%s')>" % (self.lisp)
 
 
-
 class ExerciceRepository():
 
     def findAll(self):
         return em.query(Exercice).all()
-
 
 
 class Score(Base):
@@ -100,7 +95,6 @@ class Score(Base):
         return "<Score('%s')>" % (self.time)
 
 
-
 # Let's create the entity manager at global scope.
 # In python, a module is loaded only once.
 
@@ -114,7 +108,7 @@ Base.metadata.create_all(engine)
 #session = Session()
 
 # But here we use another name.
-EntityManager = sessionmaker(bind=engine)
+EntityManager = scoped_session(sessionmaker(bind=engine, autocommit=True, autoflush=True))
 em = EntityManager()
 urep = UserRepository()
 erep = ExerciceRepository()
