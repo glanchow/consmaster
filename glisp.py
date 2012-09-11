@@ -31,14 +31,11 @@ class Arrow(QGraphicsLineItem):
     bodySize = 2
     headSize = 12
     penColor = Qt.black
-    base = QRectF()
-    head = QPolygonF()
 
     def __init__(self, p1, p2, parent=None, scene=None):
         super(Arrow, self).__init__(parent, scene)
-        self.base = QRectF(p1.x() - self.baseSize / 2,
-                           p1.y() - self.baseSize / 2,
-                           self.baseSize, self.baseSize)
+        self.base = QRectF()
+        self.head = QPolygonF()
         self.setLine(QLineF(p1, p2))
         # Add this when you add the remove action for Pointers
         #self.setFlag(QGraphicsItem.ItemIsSelectable, True)
@@ -68,14 +65,18 @@ class Arrow(QGraphicsLineItem):
         # We have to tell the view how to paint an arrow
         # Firstly the base, then the body and finally the head
         self.pen().setColor(self.penColor)
-        painter.setPen(self.pen())
+        painter.setPen(self.pen().setColor(self.penColor))
         painter.setBrush(self.penColor)
 
+        body = self.line()
+
         # Paint the base ellipse
+        self.base = QRectF(body.p1().x() - self.baseSize / 2,
+                           body.p1().y() - self.baseSize / 2,
+                           self.baseSize, self.baseSize)
         painter.drawEllipse(self.base)
 
         # Paint the body
-        body = self.line()
         if body.length() == 0:
             return
         painter.drawLine(body)
@@ -104,28 +105,21 @@ class Pointer(Arrow):
 
     A Pointer is an Arrow, but linking two items.
     It knows it's start and end items so it can morph while they move.
-# TODO
-startItem.center devrait s'appeler arrowOffset
-et cette fonction devrait être implémentée dans PointerAble par exemple
-puis réimplentée par les items qui le souhaitent
-#    The items must inherit from PointerAble as we use a special offset function.
 
     Args:
-        startItem: QGraphicsItem
-        endItem: QGraphicsItem
-#        startItem: a PointerAble QGraphicsItem
-#        endItem: a PointerAble QGraphicsItem
+        startItem: A PointerAble QGraphicsRectItem
+        endItem: A ReferenceAble QGraphicsRectItem
     """
 
     def __init__(self, startItem, endItem, parent=None, scene=None):
         self.startItem = startItem
         self.endItem = endItem
-        self.p1 = startItem.pointerOffset + startItem.scenePos()
+        self.p1 = startItem.scenePos() + startItem.rect().center()
         self.p2 = endItem.scenePos()
         super(Pointer, self).__init__(self.p1, self.p2, parent, scene)
 
     def paint(self, painter, option, widget=None):
-        self.p1 = self.startItem.pointerOffset + self.startItem.scenePos()
+        self.p1 = self.startItem.scenePos() + self.startItem.rect().center()
         self.p2 = self.endItem.scenePos()
         self.setLine(QLineF(self.p1, self.p2))
         super(Pointer, self).paint(painter, option, widget)
@@ -164,48 +158,46 @@ class ReferenceAble(object):
 
 
 class PointerAble(QGraphicsRectItem, object):
-
-    body = QRectF(0, 0, 15, 15)
-    pointerOffset = QPointF(2, 2)
-    target = None
-    # Where should I point to when my target has been deleted
-    defaultTarget = None
-    pointer = None
+    """PointerAble."""
 
     def __init__(self, target=None, parent=None, scene=None, *args, **kwargs):
         super(PointerAble, self).__init__(parent, scene, *args, **kwargs)
-        print "PointerAble inited"
-        self.setRect(self.body)
-        self.gnil = QGraphicsLineItem(QLineF(QPointF(0, 38), QPointF(38, 0)), self)
-        self.true = QGraphicsLineItem(QLineF(QPointF(0, 0), QPointF(38, 38)), self)
-        if target:
-            self.setTarget(target)
+        self.gnil = None
+        self.gtrue = None
+        self.pointer = None
+        # Where should I point to when my target has been deleted
+        self.defaultTarget = None
+        self.setTarget(target)
 
     def setTarget(self, obj):
-        #prob avec Nil qui existe pas dans glisp.py encore
-#        if not isinstance(obj, ReferenceAble):
-#            return
-
-        # Remove existing pointer
+        # Remove existing pointer or nil or true
         if self.pointer:
             self.target.removeReference(self.pointer)
             self.scene().removeItem(self.pointer)
             self.pointer = None
-
+        if self.gnil:
+            self.scene().removeItem(self.gnil)
+            self.gnil = None
+        if self.gtrue:
+            self.scene().removeItem(self.gtrue)
+            self.gtrue = None
         # Set new target
         self.target = obj
-        self.gnil.hide()
-        self.true.hide()
-
+        [x1, y1, x2, y2] = self.rect().getRect()
         if obj == None:
-            return
+            # Draw nothing
+            pass
         elif nilp(obj):
-            self.gnil.show()
+            # Draw the / line representing a pointer to nil
+            self.gnil = QGraphicsLineItem(x1, y1, x2, y2, self)
         elif tp(obj):
-            self.gnil.show()
-            self.true.show()
+            # Draw the \/ cross representing a pointer to t
+            self.gnil = QGraphicsLineItem(x1, y1, x2, y2, self)
+            self.gtrue = QGraphicsLineItem(x1, y2, x2, y1, self)
         else:
+            # Draw the pointer
             self.pointer = Pointer(self, self.target, None, self.scene())
+            # And save the reference in target
             self.target.addReference(self.pointer)
 
     def getTarget(self):
@@ -218,7 +210,7 @@ class PointerAble(QGraphicsRectItem, object):
         self.setTarget(self.defaultTarget)
 
 
-class GLispObject(ReferenceAble, LispObject, QGraphicsPolygonItem, object):
+class GLispObject(ReferenceAble, LispObject, QGraphicsRectItem, object):
     """GLispObject."""
 
     contextMenu = None
@@ -247,24 +239,20 @@ class GString(String, GLispObject, object):
         super(GString, self).__init__(text, parent, scene, *args, **kwargs)
         self.textGraphic = QGraphicsTextItem(text, self)
 
+
 class GSymbol(Symbol, GLispObject, object):
     """GSymbol."""
 
-    gcval = None
-    gcvalBody = QRectF(0, 0, 20, 20)
-    gcvalPos = QPointF(0, 10)
-
     def __init__(self, pname, parent=None, scene=None, *args, **kwargs):
+        self.gcval = None
         super(GSymbol, self).__init__(pname, None, None, parent, scene, *args, **kwargs)
-        print self, "inited"
-        print isinstance(self,ReferenceAble)
-        #print self.references
-        self.setBrush(Qt.lightGray)
-        self.gcval = PointerAble(None, self, scene)
-        self.gcval.setPos(self.gcvalPos)
 
-        self.setPolygon(QRectF(0, 0, 40, 40))
-        self.pointerOffset = QPointF(20, 20)
+        self.setBrush(Qt.lightGray)
+        self.setRect(QRectF(0, 0, 60, 40))
+
+        self.gcval = PointerAble(None, self, scene)
+        self.gcval.setRect(QRectF(0, 0, 60, 20))
+        self.gcval.setPos(QPointF(0, 20))
 
     def setCval(self, cval):
         if self.gcval == None:
@@ -285,36 +273,24 @@ class GSymbol(Symbol, GLispObject, object):
 class GCons(Cons, GLispObject, object):
     """GCons."""
 
-    body = QRectF(0, 0, 80, 40)
-    referenceOffset = QPointF(0, 0)
-    gcar = None
-    gcarBody = QRectF(0, 0, 39, 38)
-    gcarPointerOffset = QPointF(20, 19)
-    gcdr = None
-    gcdrBody = QRectF(0, 0, 39, 38)
-    gcdrPointerOffset = QPointF(20, 19)
-
     def __init__(self, car, cdr, parent=None, scene=None, *args, **kwargs):
+        self.gcar = None
+        self.gcdr = None
         super(GCons, self).__init__(None, None, parent, scene, *args, **kwargs)
-        self.setPolygon(self.body)
+        self.setRect(QRectF(0, 0, 80, 40))
         self.gcar = PointerAble(None, self, scene)
-        self.gcar.setRect(self.gcarBody)
-        self.gcar.pointerOffset = self.gcarPointerOffset
-        self.gcar.defaultTarget = GLisp.nil
+        self.gcar.setRect(0, 0, 39, 38)
+        self.gcar.setDefaultTarget(GLisp.nil)
         self.gcar.setPos(1, 1)
         self.gcdr = PointerAble(None, self, scene)
-        self.gcdr.setRect(self.gcdrBody)
-        self.gcdr.pointerOffset = self.gcdrPointerOffset
-        self.gcdr.defaultTarget = GLisp.nil
+        self.gcdr.setRect(0, 0, 39, 38)
+        self.gcdr.setDefaultTarget(GLisp.nil)
         self.gcdr.setPos(40, 1)
         self.setCar(car)
         self.setCdr(cdr)
 
     def __repr__(self):
         return "<GCons('%s, %s')>" % (self.car, self.cdr)
-
-    def getPointerOffset(self):
-        return referenceOffset
 
     def setCar(self, obj):
         if self.gcar == None:
@@ -589,23 +565,17 @@ class GLisp(Lisp, QGraphicsScene, object):
 
         # Begin the creation of a Pointer
         elif self.mode == self.SetPointer and self.arrow == None:
-            # Find
+            # We want the first valid item under the mouse pointer
             startItems = self.items(mouseEvent.scenePos())
-
-#editing
-            while startItems:
-                if isinstance(startItems[0], PointerAble):
-                        self.startItem = startItems[0]
-                        self.arrow = Arrow(self.startItem.scenePos() + self.startItem.pointerOffset,
-                                           mouseEvent.scenePos())
-                        self.addItem(self.arrow)
-                        break
-                if self.startItem != None:
+            for item in startItems:
+                if isinstance(item, PointerAble):
+                    self.startItem = item
+                    self.arrow = Arrow(item.scenePos() + item.rect().center(), mouseEvent.scenePos())
+                    self.arrow.penColor = Qt.lightGray
+                    self.addItem(self.arrow)
                     break
-                else:
-                    startItems.pop(0)
 
-
+        #
         else:
             super(GLisp, self).mousePressEvent(mouseEvent)
 
@@ -617,28 +587,21 @@ class GLisp(Lisp, QGraphicsScene, object):
             super(GLisp, self).mouseMoveEvent(mouseEvent)
 
     def mouseReleaseEvent(self, mouseEvent):
+
         if self.mode == self.SetPointer and self.arrow:
-            endItem = None
-            endItems = self.items(self.arrow.line().p2())
-
             # We want the first valid item under the mouse pointer
-            while endItems:
-                if isinstance(endItems[0], ReferenceAble):
-                    endItem = endItems[0]
-                    self.startItem.setTarget(endItem)
-#                    endItem.addReference(pointer)
-#                    self.addItem(pointer)
+            endItems = self.items(mouseEvent.scenePos())
+            for item in endItems:
+                if isinstance(item, ReferenceAble):
+                    self.startItem.setTarget(item)
                     break
-                if endItem != None:
-                    break
-                else:
-                    endItems.pop(0)
-
-
             # We've done with the temporary arrow
             self.removeItem(self.arrow)
             self.arrow = None
-        super(GLisp, self).mouseReleaseEvent(mouseEvent)
+
+        #
+        else:
+            super(GLisp, self).mouseReleaseEvent(mouseEvent)
 
     def deleteObject(self):
         for item in self.selectedItems():
