@@ -17,7 +17,8 @@ def register(username, password, email):
     return REGISTER_SUCCESS
 
 def authenticate(username, password):
-    if len(urep.findByUsernameAndPassword(username, password)) == 1:
-        return AUTHENTICATE_SUCCESS
+    users = urep.findByUsernameAndPassword(username, password)
+    if len(users) == 1:
+        return AUTHENTICATE_SUCCESS, users[0]
     else:
-        return AUTHENTICATE_FAILURE
+        return AUTHENTICATE_FAILURE, None

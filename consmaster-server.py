@@ -12,6 +12,7 @@ SIZEOF_UINT16 = 2
 import sys
 import signal
 from EntityManager import *
+from NetworkCodes import *
 import UserManager
 
 try:
@@ -30,6 +31,7 @@ class Thread(QThread):
     def __init__(self, socketDescriptor, parent):
         super(Thread, self).__init__(parent)
         self.socketDescriptor = socketDescriptor
+        self.user = None
         self.commands = {}
         self.commands["register"] = self.register
         self.commands["login"] = self.login
@@ -73,18 +75,20 @@ class Thread(QThread):
         username = inStream.readQString()
         password = inStream.readQString()
         email = inStream.readQString()
-        registered = UserManager.register(username, password, email)
+        status = UserManager.register(username, password, email)
         reply, outStream = self.newReply()
-        outStream.writeInt16(registered)
+        outStream.writeInt16(status)
         self.sendReply(reply, outStream)
 
     def login(self, inStream):
         username = inStream.readQString()
         password = inStream.readQString()
         email = inStream.readQString()
-        login = UserManager.authenticate(username, password)
+        status, user = UserManager.authenticate(username, password)
+        if status == AUTHENTICATE_SUCCESS:
+            self.user = user
         reply, outStream = self.newReply()
-        outStream.writeInt16(login)
+        outStream.writeInt16(status)
         self.sendReply(reply, outStream)
 
 
