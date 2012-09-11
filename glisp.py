@@ -19,7 +19,7 @@ class Arrow(QGraphicsLineItem):
     An Arrow serves as drawing for Pointer.
     An arrow is basically linking a start point and an end point.
     The body is made of a line between those points.
-    The base with  a little ellipse.
+    The base with a little ellipse.
     The head with a little triangle.
 
     Args:
@@ -27,25 +27,22 @@ class Arrow(QGraphicsLineItem):
         p2: end QPointF
     """
 
-    baseSize = 6
-    bodySize = 2
-    headSize = 12
-    penColor = Qt.black
-
     def __init__(self, p1, p2, parent=None, scene=None):
         super(Arrow, self).__init__(parent, scene)
         self.base = QRectF()
+        self.baseSize = 6
+        self.bodySize = 2
+        self.headSize = 12
         self.head = QPolygonF()
+        self.penColor = Qt.black
         self.setLine(QLineF(p1, p2))
-        # Add this when you add the remove action for Pointers
+        # Should we make arrows selectable ?
         #self.setFlag(QGraphicsItem.ItemIsSelectable, True)
 
-        self.setPen(QPen(self.penColor, self.bodySize, Qt.SolidLine))
-
     def boundingRect(self):
-        # The boundingRect is used to refresh the view display
-        # We must set the boundingRect of our Arrow accordingly with the size
-        # of the elements we added to this line item : the base and head
+        # The boundingRect tells the view if the item needs to be redrawn,
+        # so we must add to it the size of the elements we added to the
+        # line item : base and head
         extra = (self.pen().width() + self.headSize) / 2.0
         p1 = self.line().p1()
         p2 = self.line().p2()
@@ -53,9 +50,9 @@ class Arrow(QGraphicsLineItem):
                normalized().adjusted(-extra, -extra, extra, extra)
 
     def shape(self):
-        # The shape is used to detect collisions and receive mouse clicks
-        # We must set the shape of our Arrow accordingly with the shape
-        # of the elements we added to this line item : the base and head
+        # The shape is used to detect collisions and receive mouse clicks,
+        # so we must set the shape accordingly with elements we added
+        # to the line item : base and head
         path = super(Arrow, self).shape()
         path.addRect(self.base)
         path.addPolygon(self.head)
@@ -64,10 +61,8 @@ class Arrow(QGraphicsLineItem):
     def paint(self, painter, option, widget=None):
         # We have to tell the view how to paint an arrow
         # Firstly the base, then the body and finally the head
-        self.pen().setColor(self.penColor)
-        painter.setPen(self.pen().setColor(self.penColor))
+        painter.setPen(QPen(self.penColor, self.bodySize, Qt.SolidLine))
         painter.setBrush(self.penColor)
-
         body = self.line()
 
         # Paint the base ellipse
@@ -189,11 +184,11 @@ class PointerAble(QGraphicsRectItem, object):
             pass
         elif nilp(obj):
             # Draw the / line representing a pointer to nil
-            self.gnil = QGraphicsLineItem(x1, y1, x2, y2, self)
+            self.gnil = QGraphicsLineItem(x1, y2, x2, y1, self)
         elif tp(obj):
             # Draw the \/ cross representing a pointer to t
-            self.gnil = QGraphicsLineItem(x1, y1, x2, y2, self)
-            self.gtrue = QGraphicsLineItem(x1, y2, x2, y1, self)
+            self.gtrue = QGraphicsLineItem(x1, y1, x2, y2, self)
+            self.gnil = QGraphicsLineItem(x1, y2, x2, y1, self)
         else:
             # Draw the pointer
             self.pointer = Pointer(self, self.target, None, self.scene())
@@ -422,17 +417,17 @@ class GLisp(Lisp, QGraphicsScene, object):
         self.selectCvalAction = QAction(
             QIcon('icons/pointer.png'), u"Sélectionner C&val …",
             self, shortcut="Ctrl+V", statusTip=u"Sélectionner la valeur",
-            triggered=self.todo)
+            triggered=self.selectCval)
 
         self.nilCvalAction = QAction(
             QIcon('icons/symbol.png'), u"Cval = &nil",
             self, shortcut="Shift+N", statusTip=u"Mettre nil en Cval",
-            triggered=self.todo)
+            triggered=self.nilCval)
 
         self.tCvalAction = QAction(
             QIcon('icons/symbol.png'), u"Cval = &t",
             self, shortcut="Shift+T", statusTip=u"Mettre t en Cval",
-            triggered=self.todo)
+            triggered=self.tCval)
 
         self.unsetCvalAction = QAction(
             QIcon('icons/symbol.png'), u"Cval N&ulle",
@@ -536,8 +531,6 @@ class GLisp(Lisp, QGraphicsScene, object):
         self.mode = self.mouseActionTypeGroup.checkedId()
 
     def mousePressEvent(self, mouseEvent):
-        # Here is what happens when we click on the scene
-
         # Right click on scene, 2 actions
         if mouseEvent.button() != Qt.LeftButton:
             self.rightClickPos = mouseEvent.scenePos()
@@ -551,6 +544,8 @@ class GLisp(Lisp, QGraphicsScene, object):
             # Unselect all and go in default mode
             else:
                 self.clearSelection()
+                self.removeItem(self.arrow)
+                self.arrow = None
                 self.mode = self.SelectOrMove
                 self.mouseActionTypeGroup.button(self.SelectOrMove).setChecked(True)
             return
@@ -570,24 +565,27 @@ class GLisp(Lisp, QGraphicsScene, object):
             for item in startItems:
                 if isinstance(item, PointerAble):
                     self.startItem = item
-                    self.arrow = Arrow(item.scenePos() + item.rect().center(), mouseEvent.scenePos())
-                    self.arrow.penColor = Qt.lightGray
-                    self.addItem(self.arrow)
+                    self.manualAddPointer(mouseEvent.scenePos())
                     break
 
-        #
-        else:
+        # Select the item
+        elif self.mode == self.SelectOrMove:
             super(GLisp, self).mousePressEvent(mouseEvent)
-
+        
     def mouseMoveEvent(self, mouseEvent):
+        self.mousePos = mouseEvent.scenePos()
+
+        # Draw the arrow as the user moves the mouse
         if self.mode == self.SetPointer and self.arrow:
             newLine = QLineF(self.arrow.line().p1(), mouseEvent.scenePos())
             self.arrow.setLine(newLine)
+
+        # Move the item
         elif self.mode == self.SelectOrMove:
             super(GLisp, self).mouseMoveEvent(mouseEvent)
 
     def mouseReleaseEvent(self, mouseEvent):
-
+        # User draw an arrow, add a pointer ?
         if self.mode == self.SetPointer and self.arrow:
             # We want the first valid item under the mouse pointer
             endItems = self.items(mouseEvent.scenePos())
@@ -599,8 +597,8 @@ class GLisp(Lisp, QGraphicsScene, object):
             self.removeItem(self.arrow)
             self.arrow = None
 
-        #
-        else:
+        # End of item move
+        elif self.mode == self.SelectOrMove:
             super(GLisp, self).mouseReleaseEvent(mouseEvent)
 
     def deleteObject(self):
@@ -643,6 +641,15 @@ class GLisp(Lisp, QGraphicsScene, object):
         cons = self.addCons(self.nil, self.nil)
         cons.setPos(pos)
 
+    def manualAddPointer(self, pos=None):
+        if pos == None:
+            pos = self.mousePos
+        self.arrow = Arrow(self.startItem.scenePos() +
+                           self.startItem.rect().center(),
+                           pos)
+        self.arrow.penColor = Qt.red
+        self.addItem(self.arrow)
+
     def askValidSymbolName(self, currentName=None):
         name, ok = QInputDialog.getText(None, "Symbole",
                 "Nom du symbole (pname) :", QLineEdit.Normal,
@@ -657,16 +664,16 @@ class GLisp(Lisp, QGraphicsScene, object):
             return name
         return
 
-    def selectClass(self):
+    def selectClass(self, className):
         selected = None
         for item in self.selectedItems():
-            if isinstance(item, selected):
+            if isinstance(item, className):
                 selected = item
                 break
         return selected
 
     def editPname(self):
-        symbol = selectClass(GSymbol)
+        symbol = self.selectClass(GSymbol)
         if not symbol:
             return
         name = self.askValidSymbolName(symbol.getPname().text)
@@ -679,14 +686,31 @@ class GLisp(Lisp, QGraphicsScene, object):
         pname.setParentItem(symbol)
         self.symbols[name] = symbol
 
+    def selectCval(self):
+        symbol = self.selectClass(GSymbol)
+        if not symbol:
+            return
+        self.mode = self.SetPointer
+        self.startItem = symbol.gcval
+        self.manualAddPointer()
+
+    def nilCval(self):
+        symbol = self.selectClass(GSymbol)
+        if not symbol:
+            return
+        symbol.setCval(self.nil)
+
+    def tCval(self):
+        symbol = self.selectClass(GSymbol)
+        if not symbol:
+            return
+        symbol.setCval(self.t)
+
     def unsetCval(self):
-        symbol = selectClass(GSymbol)
+        symbol = self.selectClass(GSymbol)
         if not symbol:
             return
-        if not symbol:
-            return
-        # effacer la flèche sortante
-        symbol.cval = None
+        symbol.setCval(None)
 
     def nilCar(self):
         cons = self.selectClass(GCons)
