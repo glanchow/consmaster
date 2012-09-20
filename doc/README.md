@@ -13,7 +13,7 @@ Consmaster
 1. Introduction
 ---------------
 
-![consmaster screenshot](https://github.com/glanchow/consmaster/blob/master/doc/screenshot.jpg)
+[![consmaster screenshot](https://github.com/glanchow/consmaster/blob/master/doc/screenshot.jpg)]
 
 <a name="installation"/>
 2. Installation
