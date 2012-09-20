@@ -13,6 +13,8 @@ Consmaster
 1. Introduction
 ---------------
 
+[![solarized dualmode](https://github.com/altercation/solarized/raw/master/img/solarized-yinyang.png)](#features)\
+
 [![consmaster screenshot](https://github.com/glanchow/consmaster/blob/master/doc/screenshot.jpg)]
 
 <a name="installation"/>
