@@ -1,7 +1,7 @@
 consmaster
 ==========
 
-Forex IRC Bot - A collection of tools for forex chats.
+Consmaster
 
 1. [Introduction](#introduction)
 2. [Create an exercice category](#exercice)
