@@ -116,13 +116,20 @@ class Client(QMainWindow):
     def createWorkWidget(self):
         workWidget = QWidget()
         self.workWidget = workWidget
+
+        glispLabel = QLabel(u"&Représentation graphique:")
+        lispLabel = QLabel(u"&Représentation parenthésée:")
+        dottedLabel = QLabel(u"&Représentation à point:")
+
         glispWidget = GLispWidget(self)
         self.glisp = glispWidget.glisp
+        self.glisp.clear()
         self.addToolBar(self.glisp.toolBar)
-        print self.glisp.rep("(setq l (quote (a b c)))")
-#        self.glisp.clear()
-#        self.glisp.display("l")
-#        self.glisp.evalAndDisplay("l")
+
+        self.glisp.rep("(setq liste (quote (a b c)))")
+        self.glisp.clear()
+        self.glisp.display("liste")
+        self.glisp.evalAndDisplay("liste")
 
 #        print self.glisp.repg("(setq liste (quote (a)))")
 #        print self.glisp.rep("(setq liste (quote (a)))")
@@ -133,33 +140,39 @@ class Client(QMainWindow):
 #        print lisp.rep("(setq l (quote (a b c)))")
 #        print lisp.rep("l")
         #endtest
-        lispLabel = QLabel(u"&Lisp:")
-        dottedLabel = QLabel(u"&Dotted:")
+
         self.lispLineEdit = QLineEdit("")
+        self.lispLineEdit.setFocus()
         self.dottedLineEdit = QLineEdit("")
-        self.dottedLineEdit.setFocus()
+
+        glispLabel.setBuddy(glispWidget)
         lispLabel.setBuddy(self.lispLineEdit)
         dottedLabel.setBuddy(self.dottedLineEdit)
-        self.responseLabel = QLabel(u"")
-        self.submitWorkButton = QPushButton(u"Valider")
-        self.submitWorkButton.setDefault(True)
-        buttonBox = QDialogButtonBox()
-        buttonBox.addButton(self.submitWorkButton, QDialogButtonBox.ActionRole)
-        #self.lispLineEdit.textChanged.connect(self.updateConnectButton)
-        #self.dottedLineEdit.textChanged.connect(self.updateConnectButton)
-        self.submitWorkButton.clicked.connect(self.submitWork)
+
+        translateFromGraphicsButton = QPushButton(u"Traduire")
+        translateFromLispButton = QPushButton(u"Traduire")
+        translateFromDottedButton = QPushButton(u"Traduire")
+
+        translateFromGraphicsButton.clicked.connect(self.submitWork)
+        translateFromLispButton.clicked.connect(self.submitWork)
+        translateFromDottedButton.clicked.connect(self.submitWork)
+
         layout = QGridLayout()
-        layout.addWidget(glispWidget, 0, 0, 1, 2)
-        layout.addWidget(lispLabel, 1, 0)
-        layout.addWidget(self.lispLineEdit, 1, 1)
-        layout.addWidget(dottedLabel, 2, 0)
-        layout.addWidget(self.dottedLineEdit, 2, 1)
-        layout.addWidget(self.responseLabel, 3, 0, 1, 2)
-        layout.addWidget(buttonBox, 4, 0, 1, 2)
+        layout.addWidget(glispLabel, 0, 0, 1, 2)
+        layout.addWidget(glispWidget, 1, 0, 1, 2)
+        layout.addWidget(translateFromGraphicsButton, 2, 1, 1, 2, Qt.AlignRight)
+        layout.addWidget(lispLabel, 3, 0)
+        layout.addWidget(self.lispLineEdit, 3, 1)
+        layout.addWidget(translateFromLispButton, 4, 1, 1, 2, Qt.AlignRight)
+        layout.addWidget(dottedLabel, 5, 0)
+        layout.addWidget(self.dottedLineEdit, 5, 1)
+        layout.addWidget(translateFromDottedButton, 6, 1, 1, 2, Qt.AlignRight)
         workWidget.setLayout(layout)
 
     def submitWork(self):
-        print self.lispLineEdit.text()
+        a = self.glisp.readLisp("liste")
+        a = self.glisp.evalLisp(a)
+        print "ans=", self.glisp.printLisp(a)
 
     def createConnectDialog(self):
         self.connectDialog = QDialog()

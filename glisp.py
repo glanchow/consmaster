@@ -168,15 +168,19 @@ class PointerAble(QGraphicsRectItem, object):
         # Remove existing pointer or nil or true
         if self.pointer:
             self.target.removeReference(self.pointer)
+            print "a"
             self.scene().removeItem(self.pointer)
             self.pointer = None
         if self.gnil:
+            print "b"
             self.scene().removeItem(self.gnil)
             self.gnil = None
         if self.gtrue:
+            print "c"
             self.scene().removeItem(self.gtrue)
             self.gtrue = None
         # Set new target
+        print "d"
         self.target = obj
         [x1, y1, x2, y2] = self.rect().getRect()
         if obj == None:
@@ -232,7 +236,7 @@ class GString(String, GLispObject, object):
     """GString."""
     def __init__(self, text, parent=None, scene=None, *args, **kwargs):
         super(GString, self).__init__(text, parent, scene, *args, **kwargs)
-        self.textGraphic = QGraphicsTextItem(text, self)
+        self.graphicText = QGraphicsTextItem(text, self)
 
 
 class GSymbol(Symbol, GLispObject, object):
@@ -242,7 +246,7 @@ class GSymbol(Symbol, GLispObject, object):
         self.gcval = None
         super(GSymbol, self).__init__(pname, None, None, parent, scene, *args, **kwargs)
 
-        self.setBrush(Qt.lightGray)
+        #self.setBrush(Qt.lightGray)
         self.setRect(QRectF(0, 0, 60, 40))
 
         self.gcval = PointerAble(None, self, scene)
@@ -272,15 +276,15 @@ class GCons(Cons, GLispObject, object):
         self.gcar = None
         self.gcdr = None
         super(GCons, self).__init__(None, None, parent, scene, *args, **kwargs)
-        self.setRect(QRectF(0, 0, 80, 40))
+        self.setRect(QRectF(0, 0, 82, 42))
         self.gcar = PointerAble(None, self, scene)
-        self.gcar.setRect(0, 0, 39, 38)
+        self.gcar.setRect(0, 0, 40, 40)
         self.gcar.setDefaultTarget(GLisp.nil)
         self.gcar.setPos(1, 1)
         self.gcdr = PointerAble(None, self, scene)
-        self.gcdr.setRect(0, 0, 39, 38)
+        self.gcdr.setRect(0, 0, 40, 40)
         self.gcdr.setDefaultTarget(GLisp.nil)
-        self.gcdr.setPos(40, 1)
+        self.gcdr.setPos(41, 1)
         self.setCar(car)
         self.setCdr(cdr)
 
@@ -369,11 +373,31 @@ class GLisp(Lisp, QGraphicsScene, object):
 
     def displayAtom(self, obj):
         obj.show()
+        for child in obj.childItems():
+            child.show()
+            if stringp(child):
+                child.graphicText.show()
+            if isinstance(child, PointerAble):
+                if child.pointer != None:
+                    child.pointer.show()
+                if child.gnil != None:
+                    child.gnil.show()
+                if child.gtrue != None:
+                    child.gtrue.show()
 
     def displayList(self, obj):
         if nilp(obj):
             return
         obj.show()
+        for child in obj.childItems():
+            child.show()
+            if isinstance(child, PointerAble):
+                if child.pointer != None:
+                    child.pointer.show()
+                if child.gnil != None:
+                    child.gnil.show()
+                if child.gtrue != None:
+                    child.gtrue.show()
         self.displayObject(obj.getCar())
         self.displayList(obj.getCdr())
 
@@ -596,10 +620,12 @@ class GLisp(Lisp, QGraphicsScene, object):
             if isinstance(item, ReferenceAble):
                 item.removeReferences()
             for child in item.childItems():
-                if isinstance(item, PointerAble):
+                if isinstance(child, PointerAble):
                     child.setTarget(None)
+            print item
             self.removeItem(item)
 #non paske faut clear le nom du symbol aussi…
+
     def addSymbol(self, name):
         pname = GString(name, None, self)
         symbol = GSymbol(pname, None, self)
