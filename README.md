@@ -13,7 +13,7 @@ Consmaster
 1. Introduction
 ---------------
 
-![GitHub Logo](/images/logo.png)
+![GitHub Logo](/glanchow/consmaster/blob/master/doc/screenshot.jpg)
 
 <a name="installation"/>
 2. Installation
