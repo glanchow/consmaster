@@ -8,7 +8,8 @@ Consmaster
     1. [First](#exerciceFirst)
     2. [Second](#exerciceSecond)
 4. [Network](#network)
-5. [Todo](#todo)
+5. [Database](#database)
+6. [Todo](#todo)
 
 <a name="introduction"/>
 1. Introduction
@@ -53,6 +54,7 @@ Second
 
 <a name="network"/>
 4. Network
+----------
 
 The network interface is based on the PySide network library.
 It is fully functionnal although at the time I'm writing it only supports register and login commands.
@@ -112,9 +114,17 @@ And finally here's how we send a command from the client to the server.
         outStream.writeQString(self.passwordLineEdit.text())
         self.sendRequest(request, outStream)
 
+<a name="database"/>
+5. Database
+-----------
+
+Why sqlAlchemy ?
+
 <a name="todo"/>
-5. Todo
+6. Todo
 -------
 
 1. Let the user choose host and port from command line for both client and server
 2. Store host, port, and other configuration in a config file like ~/.consmasterrc
+3. Find a good daemonizer script for the server
+4. Check for non linear graph drawing in Pigale project to draw good looking conses

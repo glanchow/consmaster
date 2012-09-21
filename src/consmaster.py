@@ -173,9 +173,17 @@ class Client(QMainWindow):
         self.dottedLineEdit.setText(self.glisp.red("liste"))
 
     def translateFromLisp(self):
+        self.glisp.rep("(setq liste (quote "+self.lispLineEdit.text()+"))")
+        self.glisp.clear()
+        self.glisp.display("liste")
+        self.glisp.evalAndDisplay("liste")
         self.dottedLineEdit.setText(self.glisp.red("liste"))
 
     def translateFromDotted(self):
+        self.glisp.rep("(setq liste (quote "+self.dottedLineEdit.text()+"))")
+        self.glisp.clear()
+        self.glisp.display("liste")
+        self.glisp.evalAndDisplay("liste")
         self.lispLineEdit.setText(self.glisp.rep("liste"))
 
     def createConnectDialog(self):
