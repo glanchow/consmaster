@@ -134,7 +134,7 @@ class Client(QMainWindow):
 #        print self.glisp.rep("(setq liste (quote (a)))")
 #        print self.glisp.repg("l")
 #        print self.glisp.rep("(a b c)")
-        #test
+        #tes
 #        lisp = Lisp()
 #        print lisp.rep("(setq l (quote (a b c)))")
 #        print lisp.rep("l")
