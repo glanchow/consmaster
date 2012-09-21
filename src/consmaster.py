@@ -114,8 +114,7 @@ class Client(QMainWindow):
         self.toolbar.addAction(self.loginAction)
 
     def createWorkWidget(self):
-        workWidget = QWidget()
-        self.workWidget = workWidget
+        self.workWidget = QWidget()
 
         glispLabel = QLabel(u"&Représentation graphique:")
         lispLabel = QLabel(u"&Représentation parenthésée:")
@@ -153,9 +152,9 @@ class Client(QMainWindow):
         translateFromLispButton = QPushButton(u"Traduire")
         translateFromDottedButton = QPushButton(u"Traduire")
 
-        translateFromGraphicsButton.clicked.connect(self.submitWork)
-        translateFromLispButton.clicked.connect(self.submitWork)
-        translateFromDottedButton.clicked.connect(self.submitWork)
+        translateFromGraphicsButton.clicked.connect(self.translateFromGraphics)
+        translateFromLispButton.clicked.connect(self.translateFromLisp)
+        translateFromDottedButton.clicked.connect(self.translateFromDotted)
 
         layout = QGridLayout()
         layout.addWidget(glispLabel, 0, 0, 1, 2)
@@ -167,12 +166,17 @@ class Client(QMainWindow):
         layout.addWidget(dottedLabel, 5, 0)
         layout.addWidget(self.dottedLineEdit, 5, 1)
         layout.addWidget(translateFromDottedButton, 6, 1, 1, 2, Qt.AlignRight)
-        workWidget.setLayout(layout)
+        self.workWidget.setLayout(layout)
 
-    def submitWork(self):
-        a = self.glisp.readLisp("liste")
-        a = self.glisp.evalLisp(a)
-        print "ans=", self.glisp.printLisp(a)
+    def translateFromGraphics(self):
+        self.lispLineEdit.setText(self.glisp.rep("liste"))
+        self.dottedLineEdit.setText(self.glisp.red("liste"))
+
+    def translateFromLisp(self):
+        self.dottedLineEdit.setText(self.glisp.red("liste"))
+
+    def translateFromDotted(self):
+        self.lispLineEdit.setText(self.glisp.rep("liste"))
 
     def createConnectDialog(self):
         self.connectDialog = QDialog()
