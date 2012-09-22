@@ -15,6 +15,8 @@ Consmaster
 1. Introduction
 ---------------
 
+ConsMaster was designed to help students in understanding how to represent lists in parenthesis, dotted and graphical representations.
+
 ![consmaster screenshot](https://raw.github.com/glanchow/consmaster/master/doc/screenshot.jpg)
 
 
@@ -42,7 +44,8 @@ Start the server
 3. Current development
 ----------------------
 
-
+Visual overview of what is done and what is to do.
+https://raw.github.com/glanchow/consmaster/master/doc/consmaster-uml-devel.jpg
 
 
 <a name="network"/>
