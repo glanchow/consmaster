@@ -44,8 +44,7 @@ Start the server
 3. Current development
 ----------------------
 
-Visual overview of what is done and what is to do.
-https://raw.github.com/glanchow/consmaster/master/doc/consmaster-uml-devel.jpg
+[Visual overview](https://raw.github.com/glanchow/consmaster/master/doc/consmaster-uml-devel.jpg) of what is done and what is to do.
 
 
 <a name="network"/>
