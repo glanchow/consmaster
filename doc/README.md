@@ -4,18 +4,19 @@ consmaster
 Consmaster
 
 1. [Introduction](#introduction)
-2. [Create an exercice category](#exercice)
-    1. [First](#exerciceFirst)
-    2. [Second](#exerciceSecond)
+2. [Installation](#installation)
+3. [Current development](#development)
 4. [Network](#network)
-5. [Database](#database)
+5. [Create an exercice](#exercice)
 6. [Todo](#todo)
+
 
 <a name="introduction"/>
 1. Introduction
 ---------------
 
 ![consmaster screenshot](https://raw.github.com/glanchow/consmaster/master/doc/screenshot.jpg)
+
 
 <a name="installation"/>
 2. Installation
@@ -36,21 +37,13 @@ Start the server
 
     $ ./consmaster-server.py
 
-<a name="exercice"/>
-3. Exercice
----------------
 
-Exercice description.
+<a name="development"/>
+3. Current development
+----------------------
 
-<a name="exerciceFirst"/>
-### 2.1 First
 
-First
 
-<a name="exerciceSecond"/>
-### 2.2 Second
-
-Second
 
 <a name="network"/>
 4. Network
@@ -114,11 +107,12 @@ And finally here's how we send a command from the client to the server.
         outStream.writeQString(self.passwordLineEdit.text())
         self.sendRequest(request, outStream)
 
-<a name="database"/>
-5. Database
------------
+<a name="exercice"/>
+5. Exercice
+---------------
 
-Why sqlAlchemy ?
+Take a look at solver.py
+
 
 <a name="todo"/>
 6. Todo
